@@ -1,0 +1,389 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Audio Cue Prompter | Ear-Prompter & Visual Teleprompter</title>
+  <link rel="stylesheet" href="style.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+</head>
+<body data-theme="dark">
+  <div class="app-container">
+    <!-- Header -->
+    <header class="app-header">
+      <div class="logo-area">
+        <div class="logo-badge">🎙️ PROMPT-CUE</div>
+        <h1>Audio Ear-Prompter & Teleprompter</h1>
+      </div>
+      <div class="header-actions">
+        <button id="toggleSettingsBtn" class="btn btn-secondary icon-btn" title="Customize theme, audio & appearance">
+          <span class="icon">⚙️</span> Settings & Styling
+        </button>
+        <button id="toggleFullscreenBtn" class="btn btn-secondary icon-btn" title="Toggle Fullscreen">
+          <span class="icon">⛶</span> Fullscreen
+        </button>
+      </div>
+    </header>
+
+    <!-- Main Workspace -->
+    <main class="main-workspace">
+      <!-- Left Panel: Input & Controls -->
+      <section class="control-panel">
+        <div class="panel-card">
+          <div class="card-header">
+            <h2>Script Input</h2>
+            <div class="script-stats">
+              <span id="wordCount">0 words</span>
+              <span class="dot">•</span>
+              <span id="estReadingTime">0s</span>
+            </div>
+          </div>
+          
+          <div class="textarea-wrapper">
+            <textarea id="scriptInput" placeholder="Paste or type your script here...
+
+The prompter will read this text into your ear piece / headphones while tracking the active words or sentences visually on the teleprompter screen.
+
+You can select natural voices, adjust speech rate, highlight color, font size, and background colors."></textarea>
+          </div>
+
+          <div class="audio-controls-row">
+            <button id="playBtn" class="btn btn-primary lg">
+              <span class="btn-icon">▶</span> <span class="btn-label">Start Prompting</span>
+            </button>
+            <button id="pauseBtn" class="btn btn-warning lg" disabled>
+              <span class="btn-icon">⏸</span> Pause
+            </button>
+            <button id="stopBtn" class="btn btn-danger lg" disabled>
+              <span class="btn-icon">⏹</span> Reset
+            </button>
+          </div>
+
+          <!-- Quick Audio Sliders -->
+          <div class="sliders-grid">
+            <div class="slider-group">
+              <label for="speedRate">
+                <span>Speed / Pace</span>
+                <span id="speedValue" class="slider-val">1.0x</span>
+              </label>
+              <input type="range" id="speedRate" min="0.5" max="2.5" step="0.1" value="1.0">
+            </div>
+
+            <div class="slider-group">
+              <label for="pitchRate">
+                <span>Voice Pitch</span>
+                <span id="pitchValue" class="slider-val">1.0</span>
+              </label>
+              <input type="range" id="pitchRate" min="0.5" max="1.5" step="0.1" value="1.0">
+            </div>
+
+            <div class="slider-group">
+              <label for="volumeRate">
+                <span>Ear-Cue Volume</span>
+                <span id="volumeValue" class="slider-val">100%</span>
+              </label>
+              <input type="range" id="volumeRate" min="0" max="1" step="0.05" value="1.0">
+            </div>
+
+            <div class="slider-group">
+              <label for="leadTime">
+                <span>Ear Lead Buffer (Delay)</span>
+                <span id="leadTimeValue" class="slider-val">0.0s</span>
+              </label>
+              <input type="range" id="leadTime" min="0" max="2.0" step="0.1" value="0.0" title="Visual highlight delay relative to voice cue">
+            </div>
+          </div>
+
+          <!-- Prompting Chunk Style / Cadence -->
+          <div class="voice-cadence-box">
+            <div class="form-row">
+              <label for="promptChunkStyle">⏱️ Cue Prompting Style:</label>
+              <select id="promptChunkStyle">
+                <option value="full">Continuous (Start to End of script)</option>
+                <option value="sentence" selected>Sentence-by-Sentence</option>
+                <option value="clause">Clause / Phrase (Stops at . , ; : — and breath marks)</option>
+              </select>
+            </div>
+            <div class="tone-desc" id="chunkStyleDesc">
+              Prompts one sentence at a time, waits for you or advances smoothly.
+            </div>
+          </div>
+
+          <!-- Presenter Microphone & Speech Verification / Repeat on Error -->
+          <div class="mic-verification-box">
+            <div class="mic-header">
+              <div class="mic-title">
+                <span class="mic-dot" id="micStatusDot"></span>
+                <span class="mic-label">🎙️ Presenter Mic & Speech Verification</span>
+              </div>
+              <label class="switch-toggle" title="Enable microphone listening to verify what you say">
+                <input type="checkbox" id="micVerifyChk">
+                <span class="switch-slider"></span>
+              </label>
+            </div>
+            <p class="mic-explainer">
+              Listens to your voice through your mic. If you say the line/word correctly, it automatically cues the next part. If you miss or mispronounce a word, it pauses, highlights the mismatch in <strong style="color: #f97316;">orange</strong>, and re-prompts the line into your ear!
+            </p>
+            <div class="mic-live-feedback" id="micFeedbackRow" style="display: none;">
+              <span class="live-label">Heard:</span>
+              <span class="live-transcript" id="liveTranscriptText">Listening for your speech...</span>
+            </div>
+            <div id="micPermissionBanner" class="mic-permission-banner" style="display:none;">
+              <span>🔒 Mic permission needed.</span>
+              <button class="btn btn-subtle btn-sm" id="requestMicBtn">Grant Mic Access</button>
+            </div>
+          </div>
+
+          <!-- Voice Delivery Tone & Persona -->
+          <div class="voice-tone-box">
+            <div class="form-row">
+              <label for="toneSelect">🎭 Voice Delivery Style / Tone:</label>
+              <select id="toneSelect">
+                <option value="auto" selected>✨ Dynamic Auto-Sense (Adapts to punctuation & context)</option>
+                <option value="classy">🎩 Classy & Professional (Refined, poised, articulate)</option>
+                <option value="friendly">😊 Friendly & Conversational (Warm, cheerful, upbeat)</option>
+                <option value="energetic">🔥 High-Energy & Punchy (Fast, driven, broadcast intro)</option>
+                <option value="suspenseful">🕵️ Suspenseful & Dramatic (Slower, tense, deliberate pauses)</option>
+                <option value="neutral">⚖️ Neutral & Steady (Traditional flat teleprompter)</option>
+              </select>
+            </div>
+            <div class="tone-desc" id="toneDesc">
+              Automatically shapes pitch, pacing, and cadence based on punctuation (questions, exclamations, pauses).
+            </div>
+          </div>
+
+          <!-- Language & Voice Selection -->
+          <div class="voice-selection-box">
+            <div class="form-row">
+              <label for="languageSelect">Language / Accent:</label>
+              <select id="languageSelect">
+                <option value="all">🌐 All Languages</option>
+              </select>
+            </div>
+            
+            <div class="form-row">
+              <label for="voiceSelect">Voice Engine / Speaker:</label>
+              <select id="voiceSelect">
+                <option value="">Loading available voices...</option>
+              </select>
+            </div>
+
+            <div class="test-voice-row">
+              <button id="testVoiceBtn" class="btn btn-subtle btn-sm">🔊 Test Selected Voice</button>
+              <span id="voiceStatusMsg" class="subtle-status"></span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Audio Output Device / Headphone Note -->
+        <div class="panel-card headphone-guide">
+          <div class="guide-title">
+            <span>🎧 Headphone Ear-Prompting Tip</span>
+          </div>
+          <p>Connect your Bluetooth earpiece, in-ear monitor (IEM), or headphones. You can select your audio output device below (supported on modern browsers) to keep cues silent to your audience.</p>
+          <div class="form-row device-row" id="audioDeviceRow">
+            <label for="audioOutputSelect">Audio Device:</label>
+            <select id="audioOutputSelect">
+              <option value="default">Default System Audio Output</option>
+            </select>
+          </div>
+        </div>
+      </section>
+
+      <!-- Right Panel: Visual Prompter Display -->
+      <section class="prompter-display-container">
+        <div class="prompter-toolbar">
+          <div class="mode-toggles">
+            <label class="toggle-pill">
+              <input type="radio" name="highlightMode" value="word" checked>
+              <span>Word-by-Word</span>
+            </label>
+            <label class="toggle-pill">
+              <input type="radio" name="highlightMode" value="sentence">
+              <span>Sentence-by-Sentence</span>
+            </label>
+          </div>
+
+          <div class="display-actions">
+            <span class="jump-tip-badge" title="Pause the prompter, then double-click/double-tap any word or sentence to jump your voice-over right there!">
+              💡 Double-click any word to cue from there
+            </span>
+            <label class="chk-label" title="Automatically keep the current active line in the center of the viewport">
+              <input type="checkbox" id="autoScrollChk" checked>
+              <span>Auto-Scroll Center</span>
+            </label>
+            <label class="chk-label" title="Mirror text horizontally for physical teleprompter glass mirrors">
+              <input type="checkbox" id="mirrorFlipChk">
+              <span>Mirror (Glass Mode)</span>
+            </label>
+          </div>
+        </div>
+
+        <!-- Prompter Reader Screen -->
+        <div class="prompter-viewport" id="prompterViewport">
+          <div class="prompter-content" id="prompterContent">
+            <p class="placeholder-text">Your script will appear here once you type or paste it into the left box. Click "Start Prompting" to start the audio cue and follow the visual cursor.</p>
+          </div>
+        </div>
+
+        <!-- Progress Indicator -->
+        <div class="prompter-progress-bar-wrap">
+          <div class="prompter-progress-bar" id="prompterProgressBar" style="width: 0%;"></div>
+        </div>
+      </section>
+    </main>
+
+    <!-- Settings & Customization Modal / Drawer -->
+    <div class="modal-backdrop" id="settingsModal">
+      <div class="modal-card">
+        <div class="modal-header">
+          <h3>Customization & Advanced Settings</h3>
+          <button id="closeSettingsBtn" class="close-btn">&times;</button>
+        </div>
+
+        <div class="modal-body">
+          <!-- Color Customizer -->
+          <div class="settings-section">
+            <h4>🎨 Color & Theme Customization</h4>
+            
+            <div class="presets-row">
+              <span>Quick Themes:</span>
+              <button class="preset-badge" data-theme-preset="studio-dark">Studio Dark</button>
+              <button class="preset-badge" data-theme-preset="broadcast-black">Broadcast High-Contrast</button>
+              <button class="preset-badge" data-theme-preset="clean-light">Daylight</button>
+              <button class="preset-badge" data-theme-preset="cyber-green">Matrix Green</button>
+              <button class="preset-badge" data-theme-preset="warm-sepia">Warm Sepia</button>
+            </div>
+
+            <div class="colors-grid">
+              <div class="color-picker-item">
+                <label for="colorAppBg">Interface Background</label>
+                <div class="picker-input-wrap">
+                  <input type="color" id="colorAppBg" value="#0f172a">
+                  <span id="colorAppBgHex">#0f172a</span>
+                </div>
+              </div>
+
+              <div class="color-picker-item">
+                <label for="colorPrompterBg">Prompter Screen Background</label>
+                <div class="picker-input-wrap">
+                  <input type="color" id="colorPrompterBg" value="#020617">
+                  <span id="colorPrompterBgHex">#020617</span>
+                </div>
+              </div>
+
+              <div class="color-picker-item">
+                <label for="colorText">Prompter Text Color</label>
+                <div class="picker-input-wrap">
+                  <input type="color" id="colorText" value="#e2e8f0">
+                  <span id="colorTextHex">#e2e8f0</span>
+                </div>
+              </div>
+
+              <div class="color-picker-item">
+                <label for="colorHighlightBg">Active Highlight Background</label>
+                <div class="picker-input-wrap">
+                  <input type="color" id="colorHighlightBg" value="#2563eb">
+                  <span id="colorHighlightBgHex">#2563eb</span>
+                </div>
+              </div>
+
+              <div class="color-picker-item">
+                <label for="colorHighlightText">Active Highlight Text</label>
+                <div class="picker-input-wrap">
+                  <input type="color" id="colorHighlightText" value="#ffffff">
+                  <span id="colorHighlightTextHex">#ffffff</span>
+                </div>
+              </div>
+
+              <div class="color-picker-item">
+                <label for="colorPastText">Read / Past Text Fade</label>
+                <div class="picker-input-wrap">
+                  <input type="color" id="colorPastText" value="#64748b">
+                  <span id="colorPastTextHex">#64748b</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Typography Customizer -->
+          <div class="settings-section">
+            <h4>🔤 Typography & Prompter Geometry</h4>
+            <div class="sliders-grid">
+              <div class="slider-group">
+                <label for="fontSize">
+                  <span>Font Size</span>
+                  <span id="fontSizeVal" class="slider-val">42px</span>
+                </label>
+                <input type="range" id="fontSize" min="20" max="84" step="2" value="42">
+              </div>
+
+              <div class="slider-group">
+                <label for="lineHeight">
+                  <span>Line Spacing</span>
+                  <span id="lineHeightVal" class="slider-val">1.6</span>
+                </label>
+                <input type="range" id="lineHeight" min="1.2" max="2.6" step="0.1" value="1.6">
+              </div>
+
+              <div class="slider-group">
+                <label for="prompterPadding">
+                  <span>Viewport Margin / Width</span>
+                  <span id="prompterPaddingVal" class="slider-val">40px</span>
+                </label>
+                <input type="range" id="prompterPadding" min="16" max="120" step="4" value="40">
+              </div>
+
+              <div class="slider-group">
+                <label for="fontFamilySelect">Font Family</label>
+                <select id="fontFamilySelect">
+                  <option value="'Inter', sans-serif">Inter (Modern Clean Sans)</option>
+                  <option value="'JetBrains Mono', monospace">JetBrains Mono (Monospace)</option>
+                  <option value="system-ui, sans-serif">System UI</option>
+                  <option value="Georgia, serif">Georgia (Serif)</option>
+                  <option value="'Impact', 'Arial Black', sans-serif">Impact / Bold News</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
+          <!-- Cloud TTS Integration (ElevenLabs / OpenAI / Cloud) -->
+          <div class="settings-section">
+            <h4>🌐 AI Cloud Voice Engine (Optional)</h4>
+            <p class="section-desc">By default, the app uses your computer/phone's built-in browser speech synthesis with 0 latency and 0 cost. If you have an ElevenLabs API key, you can enter it here to unlock studio-grade neural AI voices.</p>
+            
+            <div class="form-row">
+              <label for="cloudEngineSelect">TTS Engine:</label>
+              <select id="cloudEngineSelect">
+                <option value="browser" selected>Browser SpeechSynthesis (Native, 0-Latency, Free)</option>
+                <option value="elevenlabs">ElevenLabs API (Ultra-realistic voices)</option>
+              </select>
+            </div>
+
+            <div id="elevenlabsConfig" class="conditional-config" style="display: none;">
+              <div class="form-row">
+                <label for="elevenlabsApiKey">ElevenLabs API Key:</label>
+                <input type="password" id="elevenlabsApiKey" placeholder="sk_...">
+              </div>
+              <div class="form-row">
+                <label for="elevenlabsVoiceId">Voice ID:</label>
+                <input type="text" id="elevenlabsVoiceId" placeholder="21m00Tcm4TlvDq8ikWAM (Rachel)" value="21m00Tcm4TlvDq8ikWAM">
+              </div>
+              <small class="tip-text">API keys are stored strictly in your local browser's storage and never sent anywhere except directly to ElevenLabs.</small>
+            </div>
+          </div>
+        </div>
+
+        <div class="modal-footer">
+          <button id="resetDefaultsBtn" class="btn btn-secondary">Reset Colors to Default</button>
+          <button id="saveSettingsBtn" class="btn btn-primary">Done</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
