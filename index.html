@@ -19,13 +19,25 @@
       </div>
       <div class="header-actions">
         <button id="toggleSettingsBtn" class="btn btn-secondary icon-btn" title="Customize theme, audio & appearance">
-          <span class="icon">⚙️</span> Settings & Styling
+          <span class="icon">⚙️</span> <span class="btn-text">Settings</span>
         </button>
         <button id="toggleFullscreenBtn" class="btn btn-secondary icon-btn" title="Toggle Fullscreen">
-          <span class="icon">⛶</span> Fullscreen
+          <span class="icon">⛶</span> <span class="btn-text">Fullscreen</span>
         </button>
       </div>
     </header>
+
+    <!-- Mobile View Tab Switcher (Visible only on small screens) -->
+    <nav class="mobile-nav-tabs" id="mobileNavTabs" aria-label="Mobile View Navigation">
+      <button class="mobile-tab-btn" data-tab="controls">
+        <span class="tab-icon">⚙️</span>
+        <span>Controls & Script</span>
+      </button>
+      <button class="mobile-tab-btn active" data-tab="prompter">
+        <span class="tab-icon">📺</span>
+        <span>Prompter Screen</span>
+      </button>
+    </nav>
 
     <!-- Main Workspace -->
     <main class="main-workspace">

@@ -503,6 +503,15 @@
     const CLAUSE_BREAK = /^[.,;:!?—–\n]$|^\.{2,}$/;
     const SENTENCE_END  = /^[.!?]$|^\.{2,}$/;
 
+    function trimUnitTokens(tokenList) {
+      if (!tokenList || !tokenList.length) return [];
+      let s = 0;
+      while (s < tokenList.length && !tokenList[s].isWord && tokenList[s].text.trim() === '') s++;
+      let e = tokenList.length - 1;
+      while (e >= s && !tokenList[e].isWord && tokenList[e].text.trim() === '') e--;
+      return tokenList.slice(s, e + 1);
+    }
+
     const regex = /(\s+|[^\s\w]+|[\w']+)/gu;
     const tokens = [];
     const sentences = [];
@@ -539,13 +548,13 @@
       // Clause break on punctuation (skip whitespace-only tokens and mid-word apostrophes)
       const isSinglePunct = !isWord && chunk.trim().length > 0;
       if (isSinglePunct && CLAUSE_BREAK.test(chunk.trim())) {
-        // Include the punctuation in the clause, then close it
-        const clauseText = currentClauseTokens.map(t => t.text).join('').trim();
+        const trimmedClauseTokens = trimUnitTokens(currentClauseTokens);
+        const clauseText = trimmedClauseTokens.map(t => t.text).join('').trim();
         if (clauseText) {
           clauses.push({
             id: clauseId,
             text: clauseText,
-            tokens: [...currentClauseTokens]
+            tokens: trimmedClauseTokens
           });
           clauseId++;
         }
@@ -553,12 +562,13 @@
 
         // Also close sentence on sentence-ending punctuation
         if (SENTENCE_END.test(chunk.trim())) {
-          const sentenceText = currentSentenceTokens.map(t => t.text).join('').trim();
+          const trimmedSentenceTokens = trimUnitTokens(currentSentenceTokens);
+          const sentenceText = trimmedSentenceTokens.map(t => t.text).join('').trim();
           if (sentenceText) {
             sentences.push({
               id: sentenceId,
               text: sentenceText,
-              tokens: [...currentSentenceTokens]
+              tokens: trimmedSentenceTokens
             });
             sentenceId++;
           }
@@ -569,17 +579,19 @@
       // Explicit newline always closes both a clause and (if content) a sentence
       if (chunk === '\n') {
         if (currentClauseTokens.length > 0) {
-          const clauseText = currentClauseTokens.map(t => t.text).join('').trim();
+          const trimmedClauseTokens = trimUnitTokens(currentClauseTokens);
+          const clauseText = trimmedClauseTokens.map(t => t.text).join('').trim();
           if (clauseText) {
-            clauses.push({ id: clauseId, text: clauseText, tokens: [...currentClauseTokens] });
+            clauses.push({ id: clauseId, text: clauseText, tokens: trimmedClauseTokens });
             clauseId++;
           }
           currentClauseTokens = [];
         }
         if (currentSentenceTokens.length > 0) {
-          const sentenceText = currentSentenceTokens.map(t => t.text).join('').trim();
+          const trimmedSentenceTokens = trimUnitTokens(currentSentenceTokens);
+          const sentenceText = trimmedSentenceTokens.map(t => t.text).join('').trim();
           if (sentenceText) {
-            sentences.push({ id: sentenceId, text: sentenceText, tokens: [...currentSentenceTokens] });
+            sentences.push({ id: sentenceId, text: sentenceText, tokens: trimmedSentenceTokens });
             sentenceId++;
           }
           currentSentenceTokens = [];
@@ -589,16 +601,18 @@
 
     // Flush remaining tokens
     if (currentClauseTokens.length > 0) {
-      const clauseText = currentClauseTokens.map(t => t.text).join('').trim();
+      const trimmedClauseTokens = trimUnitTokens(currentClauseTokens);
+      const clauseText = trimmedClauseTokens.map(t => t.text).join('').trim();
       if (clauseText) {
-        clauses.push({ id: clauseId, text: clauseText, tokens: [...currentClauseTokens] });
+        clauses.push({ id: clauseId, text: clauseText, tokens: trimmedClauseTokens });
       }
     }
 
     if (currentSentenceTokens.length > 0) {
-      const sentenceText = currentSentenceTokens.map(t => t.text).join('').trim();
+      const trimmedSentenceTokens = trimUnitTokens(currentSentenceTokens);
+      const sentenceText = trimmedSentenceTokens.map(t => t.text).join('').trim();
       if (sentenceText) {
-        sentences.push({ id: sentenceId, text: sentenceText, tokens: [...currentSentenceTokens] });
+        sentences.push({ id: sentenceId, text: sentenceText, tokens: trimmedSentenceTokens });
       }
     }
 
@@ -618,45 +632,31 @@
 
     const fragment = document.createDocumentFragment();
 
-    if (state.highlightMode === 'sentence') {
-      sentences.forEach(sentence => {
-        const spanSentence = document.createElement('span');
-        spanSentence.className = 'prompter-sentence';
-        spanSentence.dataset.sentenceId = sentence.id;
-        spanSentence.title = 'Double-click to start voice cue here';
+    // Unified DOM structure: each sentence wraps its own word spans with data-id
+    sentences.forEach(sentence => {
+      const spanSentence = document.createElement('span');
+      spanSentence.className = 'prompter-sentence';
+      spanSentence.dataset.sentenceId = sentence.id;
+      spanSentence.title = 'Double-click to start voice cue here';
 
-        sentence.tokens.forEach(tok => {
-          if (tok.text === '\n') {
-            spanSentence.appendChild(document.createElement('br'));
-          } else {
-            const spanWord = document.createElement('span');
-            spanWord.className = tok.isWord ? 'prompter-word' : 'prompter-punct';
-            spanWord.dataset.id = tok.id;
-            spanWord.textContent = tok.text;
-            spanSentence.appendChild(spanWord);
-          }
-        });
-
-        fragment.appendChild(spanSentence);
-      });
-    } else {
-      // Word-by-word mode
-      tokens.forEach(tok => {
+      sentence.tokens.forEach(tok => {
         if (tok.text === '\n') {
-          fragment.appendChild(document.createElement('br'));
+          spanSentence.appendChild(document.createElement('br'));
         } else if (tok.isWord) {
-          const span = document.createElement('span');
-          span.className = 'prompter-word';
-          span.dataset.id = tok.id;
-          span.textContent = tok.text;
-          span.title = 'Double-click to start voice cue from this word';
-          fragment.appendChild(span);
+          const spanWord = document.createElement('span');
+          spanWord.className = 'prompter-word';
+          spanWord.dataset.id = tok.id;
+          spanWord.textContent = tok.text;
+          spanWord.title = 'Double-click to start voice cue from this word';
+          spanSentence.appendChild(spanWord);
         } else {
           const textNode = document.createTextNode(tok.text);
-          fragment.appendChild(textNode);
+          spanSentence.appendChild(textNode);
         }
       });
-    }
+
+      fragment.appendChild(spanSentence);
+    });
 
     el.prompterContent.innerHTML = '';
     el.prompterContent.appendChild(fragment);
@@ -1006,15 +1006,51 @@
     utterance.volume = state.volume;
 
     let boundarySupported = false;
+    clearInterval(state.timerTrackerId);
+
+    // Fallback timer: advances word-by-word if browser voice doesn't fire onboundary
+    const startFallbackAdvancer = () => {
+      const wordTokens = unit.tokens.filter(t => t.isWord);
+      if (!wordTokens.length) return;
+      const wpm = 150 * state.speed;
+      const msPerWord = Math.max(160, Math.round((60 / wpm) * 1000));
+      let currentIdx = 0;
+
+      // Start on first word
+      highlightActiveToken(wordTokens[0].id);
+
+      state.timerTrackerId = setInterval(() => {
+        if (!state.isPlaying || state.isPaused) return;
+        currentIdx++;
+        if (currentIdx < wordTokens.length) {
+          highlightActiveToken(wordTokens[currentIdx].id);
+        } else {
+          clearInterval(state.timerTrackerId);
+        }
+      }, msPerWord);
+    };
 
     utterance.onboundary = (event) => {
       boundarySupported = true;
+      clearInterval(state.timerTrackerId);
+
       const charIndex = event.charIndex;
-      const matched = unit.tokens.find(t => {
-        const relStart = t.charStart - unit.tokens[0].charStart;
-        const relEnd = t.charEnd - unit.tokens[0].charStart;
-        return charIndex >= relStart && charIndex < relEnd;
-      });
+      const textOffset = unit.tokens[0] ? unit.tokens[0].charStart : 0;
+      const targetChar = textOffset + charIndex;
+
+      // 1. Direct match within unit tokens
+      let matched = unit.tokens.find(t => targetChar >= t.charStart && targetChar < t.charEnd && t.isWord);
+      if (!matched) {
+        matched = unit.tokens.find(t => t.isWord && t.charStart >= targetChar);
+      }
+      // 2. Global fallback match
+      if (!matched) {
+        matched = state.tokens.find(t => targetChar >= t.charStart && targetChar < t.charEnd && t.isWord);
+      }
+      if (!matched && unit.tokens.length > 0) {
+        // Fallback to first word of the unit
+        matched = unit.tokens.find(t => t.isWord);
+      }
 
       if (matched) {
         if (state.leadDelaySec > 0) {
@@ -1029,9 +1065,17 @@
       enableSpeechKeepAlive();
       state.isWaitingForPresenter = false;
       el.voiceStatusMsg.textContent = isReprompt ? '🎧 Re-prompting into ear...' : '🎧 Cueing in headphone...';
+
+      // Start fallback if onboundary isn't received within 350ms
+      setTimeout(() => {
+        if (!boundarySupported && state.isPlaying && !state.isPaused) {
+          startFallbackAdvancer();
+        }
+      }, 350);
     };
 
     utterance.onend = () => {
+      clearInterval(state.timerTrackerId);
       if (!state.isPlaying || state.isPaused) return;
 
       if (state.micVerificationEnabled) {
@@ -1083,28 +1127,47 @@
     const progress = Math.round(((tokenIndex + 1) / state.tokens.length) * 100);
     el.prompterProgressBar.style.width = `${progress}%`;
 
-    if (state.highlightMode === 'sentence') {
-      const sentenceId = token.sentenceIndex;
-      if (sentenceId !== state.activeSentenceIndex) {
-        state.activeSentenceIndex = sentenceId;
+    const sentenceId = token.sentenceIndex;
+    state.activeSentenceIndex = sentenceId;
 
-        const allSentenceEls = el.prompterContent.querySelectorAll('.prompter-sentence');
-        allSentenceEls.forEach(item => {
-          const id = parseInt(item.dataset.sentenceId, 10);
-          if (id === sentenceId) {
-            item.classList.add('active');
-            item.classList.remove('past');
-            scrollToElement(item);
-          } else if (id < sentenceId) {
-            item.classList.remove('active');
-            item.classList.add('past');
-          } else {
-            item.classList.remove('active', 'past');
-          }
-        });
+    if (state.highlightMode === 'sentence') {
+      // Clear individual word highlights so sentence block is uniform
+      const allWords = el.prompterContent.querySelectorAll('.prompter-word.active');
+      allWords.forEach(w => w.classList.remove('active'));
+
+      let targetSentenceEl = null;
+      const allSentenceEls = el.prompterContent.querySelectorAll('.prompter-sentence');
+      allSentenceEls.forEach(item => {
+        const id = parseInt(item.dataset.sentenceId, 10);
+        if (id === sentenceId) {
+          item.classList.add('active');
+          item.classList.remove('past');
+          targetSentenceEl = item;
+        } else if (id < sentenceId) {
+          item.classList.remove('active');
+          item.classList.add('past');
+        } else {
+          item.classList.remove('active', 'past');
+        }
+      });
+
+      if (targetSentenceEl) {
+        scrollToElement(targetSentenceEl);
       }
     } else {
-      // Word-by-word mode
+      // Word-by-Word karaoke mode: clear sentence block active classes
+      const allSentenceEls = el.prompterContent.querySelectorAll('.prompter-sentence');
+      allSentenceEls.forEach(item => {
+        const id = parseInt(item.dataset.sentenceId, 10);
+        item.classList.remove('active');
+        if (id < sentenceId) {
+          item.classList.add('past');
+        } else {
+          item.classList.remove('past');
+        }
+      });
+
+      // Highlight active word and dim past words
       const allWordEls = el.prompterContent.querySelectorAll('.prompter-word');
       let targetEl = null;
 
@@ -1590,11 +1653,14 @@
       lastTapTarget = target;
     });
 
-    // Highlight Mode Toggle
+    // Highlight Mode Toggle (Word-by-Word vs Sentence-by-Sentence)
     document.querySelectorAll('input[name="highlightMode"]').forEach(radio => {
       radio.addEventListener('change', (e) => {
         state.highlightMode = e.target.value;
-        buildPrompterDOM(el.scriptInput.value);
+        saveSettings();
+        if (state.activeTokenIndex >= 0) {
+          highlightActiveToken(state.activeTokenIndex);
+        }
       });
     });
 
@@ -1686,6 +1752,38 @@
       el.elevenlabsConfig.style.display = state.cloudEngine === 'elevenlabs' ? 'flex' : 'none';
       saveSettings();
     });
+
+    // Mobile View Tab Navigation
+    const mobileWorkspace = document.querySelector('.main-workspace');
+    const mobileTabButtons = document.querySelectorAll('.mobile-tab-btn');
+    if (mobileWorkspace && mobileTabButtons.length) {
+      // Default to prompter view
+      mobileWorkspace.setAttribute('data-active-tab', 'prompter');
+
+      mobileTabButtons.forEach(btn => {
+        btn.addEventListener('click', () => {
+          const tabName = btn.dataset.tab;
+          mobileWorkspace.setAttribute('data-active-tab', tabName);
+          mobileTabButtons.forEach(b => b.classList.toggle('active', b === btn));
+
+          // When switching to prompter view on mobile, re-center highlight
+          if (tabName === 'prompter' && state.activeTokenIndex >= 0) {
+            setTimeout(() => {
+              const activeEl = el.prompterContent.querySelector('.prompter-word.active, .prompter-sentence.active');
+              if (activeEl) scrollToElement(activeEl);
+            }, 100);
+          }
+        });
+      });
+
+      // Auto-switch to Prompter screen when user taps "Start Prompting" on mobile
+      el.playBtn.addEventListener('click', () => {
+        if (window.innerWidth <= 980) {
+          mobileWorkspace.setAttribute('data-active-tab', 'prompter');
+          mobileTabButtons.forEach(b => b.classList.toggle('active', b.dataset.tab === 'prompter'));
+        }
+      });
+    }
 
     // Keyboard Shortcuts (Space to play/pause, Escape to stop)
     window.addEventListener('keydown', (e) => {

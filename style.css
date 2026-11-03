@@ -944,9 +944,219 @@ select:focus, input[type="text"]:focus, input[type="password"]:focus {
 }
 
 /* Fullscreen Mode Optimization */
-:fullscreen .app-header {
-  display: none;
+:fullscreen .app-header,
+:fullscreen .mobile-nav-tabs {
+  display: none !important;
 }
 :fullscreen .main-workspace {
   grid-template-columns: 340px 1fr;
+}
+
+/* ==========================================================================
+   MOBILE & TABLET RESPONSIVE ENHANCEMENTS
+   ========================================================================== */
+
+/* Mobile Navigation Bar (hidden on desktop) */
+.mobile-nav-tabs {
+  display: none;
+  background: #0b1120;
+  border-bottom: 1px solid var(--card-border);
+  padding: 6px 12px;
+  gap: 8px;
+  position: sticky;
+  top: 0;
+  z-index: 20;
+}
+
+.mobile-tab-btn {
+  flex: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 10px 12px;
+  font-size: 13px;
+  font-weight: 600;
+  border-radius: var(--radius-md);
+  border: 1px solid transparent;
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  user-select: none;
+}
+
+.mobile-tab-btn .tab-icon {
+  font-size: 14px;
+}
+
+.mobile-tab-btn.active {
+  background: var(--primary);
+  color: #ffffff;
+  border-color: var(--primary-hover);
+  box-shadow: 0 2px 8px rgba(59, 130, 246, 0.4);
+}
+
+/* Medium Devices (Tablets & Landscape Mobile, <= 980px) */
+@media (max-width: 980px) {
+  .mobile-nav-tabs {
+    display: flex;
+  }
+
+  .app-container {
+    height: 100vh;
+    height: 100dvh; /* Dynamic viewport height on iOS/Android */
+    overflow: hidden;
+  }
+
+  .app-header {
+    height: 56px;
+    padding: 0 14px;
+  }
+
+  .app-header h1 {
+    font-size: 14px;
+  }
+
+  .logo-badge {
+    font-size: 11px;
+    padding: 3px 8px;
+  }
+
+  .main-workspace {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    overflow: hidden;
+    position: relative;
+  }
+
+  /* Controlled View by Mobile Tab */
+  .main-workspace[data-active-tab="controls"] .control-panel {
+    display: flex;
+    flex: 1;
+  }
+  .main-workspace[data-active-tab="controls"] .prompter-display-container {
+    display: none;
+  }
+
+  .main-workspace[data-active-tab="prompter"] .control-panel {
+    display: none;
+  }
+  .main-workspace[data-active-tab="prompter"] .prompter-display-container {
+    display: flex;
+    flex: 1;
+  }
+
+  .control-panel {
+    border-right: none;
+    padding: 14px;
+    gap: 14px;
+    height: 100%;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .prompter-display-container {
+    height: 100%;
+    overflow: hidden;
+  }
+
+  .prompter-viewport {
+    padding: 18vh 20px;
+  }
+
+  .prompter-content {
+    font-size: clamp(26px, 7vw, 48px);
+  }
+
+  .prompter-toolbar {
+    height: auto;
+    min-height: 48px;
+    padding: 8px 12px;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .mode-toggles {
+    order: 1;
+  }
+
+  .display-actions {
+    order: 2;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+
+  .jump-tip-badge {
+    font-size: 10px;
+    padding: 2px 6px;
+  }
+}
+
+/* Small Phones (<= 640px) */
+@media (max-width: 640px) {
+  .app-header h1 {
+    display: none; /* Hide long title to give room to actions */
+  }
+
+  .header-actions .btn {
+    padding: 6px 10px;
+    font-size: 12px;
+  }
+
+  .header-actions .btn-text {
+    display: none; /* Icon-only buttons on very small phones */
+  }
+
+  .audio-controls-row {
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+
+  .audio-controls-row .btn.lg {
+    padding: 14px;
+    font-size: 16px;
+  }
+
+  .sliders-grid {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+
+  /* Touch-friendly inputs & selects */
+  select, input[type="text"], input[type="password"] {
+    font-size: 16px; /* Prevents auto-zoom on iOS Safari */
+    padding: 10px;
+  }
+
+  textarea#scriptInput {
+    font-size: 16px;
+    height: 140px;
+  }
+
+  /* Modal bottom-sheet style on mobile */
+  .modal-backdrop {
+    padding: 0;
+    align-items: flex-end;
+  }
+
+  .modal-card {
+    max-width: 100%;
+    max-height: 90vh;
+    border-bottom-left-radius: 0;
+    border-bottom-right-radius: 0;
+  }
+
+  .modal-body {
+    padding: 16px;
+  }
+
+  .colors-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .prompter-viewport {
+    padding: 20vh 14px;
+  }
 }
